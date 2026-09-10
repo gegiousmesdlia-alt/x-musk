@@ -72,70 +72,79 @@ async function onAuthChange(user) {
   currentUser = user;
   const page = window.__PAGE__; // set by each HTML file before boot.js loads
 
-  if (user) {
-    if (user.email === ADMIN_EMAIL) {
-      isAdmin = true;
+  try {
+    if (user) {
+      if (user.email === ADMIN_EMAIL) {
+        isAdmin = true;
+        const snap = await window.XF.get('users/' + user.uid);
+        currentProfile = snap.exists() ? snap.val() : { displayName: 'Admin', uid: user.uid };
+        hideLoader();
+        if (page === 'admin') { loadAdminUsers(); setTimeout(injectAdminTools, 400); }
+        else { showPage('admin'); }
+        return;
+      }
+      isAdmin = false;
       const snap = await window.XF.get('users/' + user.uid);
-      currentProfile = snap.exists() ? snap.val() : { displayName: 'Admin', uid: user.uid };
+      currentProfile = snap.exists() ? snap.val() : null;
+      updateNavUser(); updateComposerAvatar && updateComposerAvatar();
+      loadSuggested && loadSuggested();
+      startNotifWatch && startNotifWatch();
+      startMsgWatch && startMsgWatch();
+      updateSidebarVerifyBtn && updateSidebarVerifyBtn();
+      _updateMsgRequestBadge && _updateMsgRequestBadge();
+      _initPresence && _initPresence(user.uid);
+
       hideLoader();
-      if (page === 'admin') { loadAdminUsers(); setTimeout(injectAdminTools, 400); }
-      else { showPage('admin'); }
-      return;
-    }
-    isAdmin = false;
-    const snap = await window.XF.get('users/' + user.uid);
-    currentProfile = snap.exists() ? snap.val() : null;
-    updateNavUser(); updateComposerAvatar && updateComposerAvatar();
-    loadSuggested && loadSuggested();
-    startNotifWatch && startNotifWatch();
-    startMsgWatch && startMsgWatch();
-    updateSidebarVerifyBtn && updateSidebarVerifyBtn();
-    _updateMsgRequestBadge && _updateMsgRequestBadge();
-    _initPresence && _initPresence(user.uid);
 
+      // Check for pending session profile redirect
+      if (!window._pendingProfileUid) {
+        try { window._pendingProfileUid = sessionStorage.getItem('_pendingProfileUid') || null; } catch(e) {}
+      }
+      if (window._pendingProfileUid) {
+        const pendingUid = window._pendingProfileUid;
+        window._pendingProfileUid = null;
+        try { sessionStorage.removeItem('_pendingProfileUid'); } catch(e) {}
+        if (pendingUid === user.uid) showPage('profile');
+        else showPage('user-profile', { uid: pendingUid });
+        return;
+      }
+
+      // If we're on an auth page, redirect to feed
+      if (['landing','login','register','reset'].includes(page)) { showPage('feed'); return; }
+
+      // Page-specific initialisation
+      if (page === 'feed')          { renderFeed(); setTimeout(loadBizFeed, 1500); setTimeout(runScheduledPosts, 5000); }
+      if (page === 'discover')      renderDiscover();
+      if (page === 'notifications') renderNotifications();
+      if (page === 'messages')      renderConversations();
+      if (page === 'profile')       renderOwnProfile();
+      if (page === 'user-profile') {
+        const uid = new URLSearchParams(window.location.search).get('uid');
+        if (uid) renderUserProfile(uid); else showPage('feed');
+      }
+      if (page === 'post-detail') {
+        const postId = new URLSearchParams(window.location.search).get('postId');
+        if (postId) renderPostDetail(postId); else showPage('feed');
+      }
+
+    } else {
+      isAdmin = false; currentProfile = null;
+      updateNavUser && updateNavUser();
+      updateSidebarVerifyBtn && updateSidebarVerifyBtn();
+      hideLoader();
+
+      // Pages that require auth — send to landing
+      const authRequired = ['feed','discover','notifications','messages','profile','user-profile','post-detail','admin'];
+      if (authRequired.includes(page)) { showPage('landing'); }
+      // Otherwise stay (landing, login, register, reset)
+    }
+  } catch (err) {
+    // Without this, a Firestore error here (rules not published yet, API
+    // not enabled, offline, etc.) leaves the loading screen up forever
+    // with no visible error.
+    console.error('[Auth] onAuthChange failed:', err);
     hideLoader();
-
-    // Check for pending session profile redirect
-    if (!window._pendingProfileUid) {
-      try { window._pendingProfileUid = sessionStorage.getItem('_pendingProfileUid') || null; } catch(e) {}
-    }
-    if (window._pendingProfileUid) {
-      const pendingUid = window._pendingProfileUid;
-      window._pendingProfileUid = null;
-      try { sessionStorage.removeItem('_pendingProfileUid'); } catch(e) {}
-      if (pendingUid === user.uid) showPage('profile');
-      else showPage('user-profile', { uid: pendingUid });
-      return;
-    }
-
-    // If we're on an auth page, redirect to feed
-    if (['landing','login','register','reset'].includes(page)) { showPage('feed'); return; }
-
-    // Page-specific initialisation
-    if (page === 'feed')          { renderFeed(); setTimeout(loadBizFeed, 1500); setTimeout(runScheduledPosts, 5000); }
-    if (page === 'discover')      renderDiscover();
-    if (page === 'notifications') renderNotifications();
-    if (page === 'messages')      renderConversations();
-    if (page === 'profile')       renderOwnProfile();
-    if (page === 'user-profile') {
-      const uid = new URLSearchParams(window.location.search).get('uid');
-      if (uid) renderUserProfile(uid); else showPage('feed');
-    }
-    if (page === 'post-detail') {
-      const postId = new URLSearchParams(window.location.search).get('postId');
-      if (postId) renderPostDetail(postId); else showPage('feed');
-    }
-
-  } else {
-    isAdmin = false; currentProfile = null;
-    updateNavUser && updateNavUser();
-    updateSidebarVerifyBtn && updateSidebarVerifyBtn();
-    hideLoader();
-
-    // Pages that require auth — send to landing
-    const authRequired = ['feed','discover','notifications','messages','profile','user-profile','post-detail','admin'];
-    if (authRequired.includes(page)) { showPage('landing'); }
-    // Otherwise stay (landing, login, register, reset)
+    if (typeof showToast === 'function') showToast('Could not load your account — please refresh');
   }
 }
 
