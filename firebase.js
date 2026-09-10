@@ -126,6 +126,16 @@ function _getByFieldPath(obj, fieldPath) {
   return fieldPath.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), obj);
 }
 
+// Firestore documents must be objects; a few RTDB paths (e.g. handles/{handle})
+// store a bare primitive (a uid string). Wrap on write, unwrap on read.
+function _wrapPrimitive(val) {
+  return (val !== null && typeof val === 'object' && !Array.isArray(val)) ? val : { value: val };
+}
+function _unwrapPrimitive(val) {
+  if (val && typeof val === 'object' && Object.keys(val).length === 1 && 'value' in val) return val.value;
+  return val;
+}
+
 /* ── Ref cache for raw RTDB fallback (unchanged behaviour) ──────────────── */
 const _refCache = new Map();
 function _ref(path) {
@@ -149,12 +159,12 @@ function _write(label, promise) {
 // otherwise fall back to RTDB and copy the record into Firestore.
 async function _getDoc(r) {
   const fsSnap = await r.fsRef.get();
-  if (fsSnap.exists) return new FakeSnapshot(fsSnap.data(), false);
+  if (fsSnap.exists) return new FakeSnapshot(_unwrapPrimitive(fsSnap.data()), false);
 
   const rtdbSnap = await _rtdb.ref(r.rtdbPath).once('value');
   if (rtdbSnap.exists()) {
     const val = rtdbSnap.val();
-    r.fsRef.set(val, { merge: true }).catch(err =>
+    r.fsRef.set(_wrapPrimitive(val), { merge: true }).catch(err =>
       console.error(`[XF] auto-migrate failed for ${r.rtdbPath}:`, err));
     return new FakeSnapshot(val, false);
   }
@@ -270,7 +280,7 @@ async function loadFirebase() {
       if (r.kind === 'field') {
         return _write(`set(${path})`, r.fsRef.set({ [r.fieldPath]: val }, { merge: true }));
       }
-      return _write(`set(${path})`, r.fsRef.set(val));
+      return _write(`set(${path})`, r.fsRef.set(_wrapPrimitive(val)));
     },
 
     async update(path, val) {
