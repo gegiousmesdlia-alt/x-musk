@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "functions": {
+    "api/profile.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/u/:handle",
+      "destination": "/api/profile?user=:handle"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
+  ]
+}
