@@ -166,8 +166,13 @@ module.exports = async (req, res) => {
   const isVerified   = profile.verified === true;
   const verifiedMark = isVerified ? ' ✓' : '';
 
-  // The link the user will actually open in the browser
-  const profileAppURL = `${SITE_URL}/index.html?user=${encodeURIComponent(userHandle || uid)}`;
+  // The link the user will actually open in the browser. This MUST point to
+  // user-profile.html (the page that actually renders a profile and is
+  // guest-viewable) — index.html?user=... was silently doing nothing with
+  // that query param and just showing the plain landing/sign-in screen,
+  // which meant every shared profile link dead-ended there instead of
+  // showing the profile.
+  const profileAppURL = `${SITE_URL}/user-profile.html?uid=${encodeURIComponent(uid)}`;
 
   // FIX: ogImage was defined but NEVER used in the OG meta tags (template used
   // bare photoURL directly, so users without a photo got no og:image at all).

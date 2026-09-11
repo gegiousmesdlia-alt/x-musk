@@ -314,7 +314,7 @@ async function rsvpEvent(postId) {
 }
 
 function sharePost(postId) {
-  const url = window.location.origin + window.location.pathname + '?post=' + postId;
+  const url = window.location.origin + '/post-detail.html?postId=' + encodeURIComponent(postId);
   if (navigator.clipboard) navigator.clipboard.writeText(url); showToast('Link copied!');
 }
 
