@@ -1,0 +1,128 @@
+{
+  "rules": {
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'admin@gmail.com')"
+      }
+    },
+
+    "handles": {
+      ".read": true,
+      "$handle": {
+        ".write": "auth != null"
+      }
+    },
+
+    "posts": {
+      ".read": "auth != null",
+      "$postId": {
+        ".write": "auth != null"
+      }
+    },
+
+    "comments": {
+      "$postId": {
+        ".read": "auth != null",
+        "$commentId": {
+          ".write": "auth != null"
+        }
+      }
+    },
+
+    "connections": {
+      "$uid": {
+        ".read": "auth != null",
+        "$otherUid": {
+          ".write": "auth != null && (auth.uid === $uid || auth.uid === $otherUid)"
+        }
+      }
+    },
+
+    "connectionRequests": {
+      ".read": "auth != null",
+      "$reqId": {
+        ".write": "auth != null"
+      }
+    },
+
+    "blocks": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'admin@gmail.com')",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "dms": {
+      "$convId": {
+        ".read": "auth != null && $convId.contains(auth.uid)",
+        ".write": "auth != null && $convId.contains(auth.uid)"
+      }
+    },
+
+    "messageRequests": {
+      "$toUid": {
+        ".read": "auth != null && (auth.uid === $toUid || auth.token.email === 'admin@gmail.com')",
+        "$fromUid": {
+          ".write": "auth != null && (auth.uid === $toUid || auth.uid === $fromUid)"
+        }
+      }
+    },
+
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'admin@gmail.com')",
+        ".write": "auth != null"
+      }
+    },
+
+    "investments": {
+      "$postId": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'admin@gmail.com')"
+        }
+      }
+    },
+
+    "scheduledPosts": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null"
+      }
+    },
+
+    "profileViews": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'admin@gmail.com')",
+        "$viewerUid": {
+          ".write": "auth != null && auth.uid === $viewerUid"
+        }
+      }
+    },
+
+    "appConfig": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'admin@gmail.com'"
+    },
+
+    "config": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.email === 'admin@gmail.com'"
+    },
+
+    "typing": {
+      "$convId": {
+        ".read": "auth != null && $convId.contains(auth.uid)",
+        ".write": "auth != null && $convId.contains(auth.uid)"
+      }
+    },
+
+    "presence": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}

@@ -86,12 +86,20 @@ async function onAuthChange(user) {
       isAdmin = false;
       const snap = await window.XF.get('users/' + user.uid);
       currentProfile = snap.exists() ? snap.val() : null;
+
+      // If we're on an auth page (or any page missing the app-only scripts),
+      // redirect to the feed BEFORE running init code that depends on
+      // scripts (notifications.js, messages.js, etc.) those pages don't
+      // load — running them first was crashing the login/register/reset
+      // flow before it ever got a chance to redirect.
+      if (['landing','login','register','reset'].includes(page)) { showPage('feed'); return; }
+
       updateNavUser(); typeof updateComposerAvatar === 'function' && updateComposerAvatar();
-      loadSuggested && loadSuggested();
-      startNotifWatch && startNotifWatch();
-      startMsgWatch && startMsgWatch();
+      typeof loadSuggested === 'function' && loadSuggested();
+      typeof startNotifWatch === 'function' && startNotifWatch();
+      typeof startMsgWatch === 'function' && startMsgWatch();
       typeof updateSidebarVerifyBtn === 'function' && updateSidebarVerifyBtn();
-      _updateMsgRequestBadge && _updateMsgRequestBadge();
+      typeof _updateMsgRequestBadge === 'function' && _updateMsgRequestBadge();
       typeof _initPresence === 'function' && _initPresence(user.uid);
 
       hideLoader();
@@ -108,9 +116,6 @@ async function onAuthChange(user) {
         else showPage('user-profile', { uid: pendingUid });
         return;
       }
-
-      // If we're on an auth page, redirect to feed
-      if (['landing','login','register','reset'].includes(page)) { showPage('feed'); return; }
 
       // Page-specific initialisation
       if (page === 'feed')          { renderFeed(); setTimeout(loadBizFeed, 1500); setTimeout(runScheduledPosts, 5000); }
