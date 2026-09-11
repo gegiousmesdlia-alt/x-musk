@@ -86,13 +86,13 @@ async function onAuthChange(user) {
       isAdmin = false;
       const snap = await window.XF.get('users/' + user.uid);
       currentProfile = snap.exists() ? snap.val() : null;
-      updateNavUser(); updateComposerAvatar && updateComposerAvatar();
+      updateNavUser(); typeof updateComposerAvatar === 'function' && updateComposerAvatar();
       loadSuggested && loadSuggested();
       startNotifWatch && startNotifWatch();
       startMsgWatch && startMsgWatch();
-      updateSidebarVerifyBtn && updateSidebarVerifyBtn();
+      typeof updateSidebarVerifyBtn === 'function' && updateSidebarVerifyBtn();
       _updateMsgRequestBadge && _updateMsgRequestBadge();
-      _initPresence && _initPresence(user.uid);
+      typeof _initPresence === 'function' && _initPresence(user.uid);
 
       hideLoader();
 
@@ -130,7 +130,7 @@ async function onAuthChange(user) {
     } else {
       isAdmin = false; currentProfile = null;
       updateNavUser && updateNavUser();
-      updateSidebarVerifyBtn && updateSidebarVerifyBtn();
+      typeof updateSidebarVerifyBtn === 'function' && updateSidebarVerifyBtn();
       hideLoader();
 
       // Pages that require auth — send to landing

@@ -74,7 +74,7 @@ async function uploadProfilePhoto(input) {
     await window.XF.update('users/' + currentUser.uid, { photoURL: r.url });
     await window.XF.updateProfile({ photoURL: r.url });
     currentProfile.photoURL = r.url; showToast('Profile photo updated!');
-    renderOwnProfile(); updateNavUser(); updateComposerAvatar();
+    renderOwnProfile(); updateNavUser(); typeof updateComposerAvatar === 'function' && updateComposerAvatar();
   } catch (err) { showToast('Upload failed: ' + err.message); }
 }
 
