@@ -22,10 +22,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.XFire._reattach && window.XFire._reattach();
     }
 
-    let authFired = false;
+    // Track the auth state we last acted on, so we only skip TRUE duplicate
+    // firings (e.g. a token refresh with the same user) — not the very real
+    // transition from "not signed in" to "just signed in", which is exactly
+    // what happens right after a login/register/Google sign-in on this page.
+    let lastUid; // undefined until the first callback fires
     window.XF.onAuth(user => {
-      if (authFired) return;
-      authFired = true;
+      const uid = user ? user.uid : null;
+      if (lastUid !== undefined && lastUid === uid) return;
+      lastUid = uid;
       clearTimeout(loaderFailsafe);
       onAuthChange(user);
     });

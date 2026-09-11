@@ -17,7 +17,7 @@ service cloud.firestore {
 
     /* ── users/{uid} ─────────────────────────────────────────────────── */
     match /users/{uid} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if isSelf(uid);
       allow update, delete: if isSelf(uid) || isAdmin();
 

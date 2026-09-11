@@ -48,6 +48,7 @@ async function handleGoogleAuth() {
 }
 
 async function handleLogout() {
+  try { sessionStorage.clear(); } catch (e) {}
   await window.XF.signOut(); window.location.href = "/index.html";
 }
 
@@ -84,8 +85,29 @@ async function onAuthChange(user) {
         return;
       }
       isAdmin = false;
-      const snap = await window.XF.get('users/' + user.uid);
-      currentProfile = snap.exists() ? snap.val() : null;
+
+      // Session-local cache: once we've fetched a profile in this browser
+      // tab, later page navigations (this is a true multi-page app — every
+      // click is a fresh page load) use the cached copy immediately instead
+      // of waiting on a network round-trip, then quietly refresh in the
+      // background so real changes (from this device or another) still
+      // show up without the user having to feel a reload every time.
+      const _profCacheKey = 'xf_profile_' + user.uid;
+      let _cachedProfile = null;
+      try {
+        const raw = sessionStorage.getItem(_profCacheKey);
+        if (raw) _cachedProfile = JSON.parse(raw);
+      } catch (e) {}
+
+      if (_cachedProfile) {
+        currentProfile = _cachedProfile;
+      } else {
+        const snap = await window.XF.get('users/' + user.uid);
+        currentProfile = snap.exists() ? snap.val() : null;
+        if (currentProfile) {
+          try { sessionStorage.setItem(_profCacheKey, JSON.stringify(currentProfile)); } catch (e) {}
+        }
+      }
 
       // If we're on an auth page (or any page missing the app-only scripts),
       // redirect to the feed BEFORE running init code that depends on
@@ -103,6 +125,21 @@ async function onAuthChange(user) {
       typeof _initPresence === 'function' && _initPresence(user.uid);
 
       hideLoader();
+
+      // Always refresh from the network in the background — even on a
+      // cache hit — so edits made elsewhere (another tab, another device,
+      // an admin action) show up without needing a hard refresh.
+      window.XF.get('users/' + user.uid).then(freshSnap => {
+        const fresh = freshSnap.exists() ? freshSnap.val() : null;
+        if (!fresh) return;
+        const changed = JSON.stringify(fresh) !== JSON.stringify(currentProfile);
+        currentProfile = fresh;
+        try { sessionStorage.setItem(_profCacheKey, JSON.stringify(fresh)); } catch (e) {}
+        if (changed) {
+          updateNavUser();
+          if (page === 'profile' && typeof renderOwnProfile === 'function') renderOwnProfile();
+        }
+      }).catch(err => console.error('[Auth] background profile refresh failed:', err));
 
       // Check for pending session profile redirect
       if (!window._pendingProfileUid) {
