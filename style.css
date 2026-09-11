@@ -2911,3 +2911,30 @@ body.theme-light .dm-bubble.me { background: linear-gradient(135deg,#1d9bf0,#156
   font-weight: 400;
   margin-top: 2px;
 }
+
+/* ── Cross-document View Transitions ─────────────────────────────────────
+   Smooths navigation between pages (Chrome/Edge; other browsers just get
+   today's instant swap, nothing breaks). A quick cross-fade instead of a
+   hard cut into the loader screen — genuinely closer to "gliding" without
+   requiring a full single-page-app rebuild. ─────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.22s;
+    animation-timing-function: ease-out;
+  }
+  ::view-transition-old(root) {
+    animation-name: x-fade-out;
+  }
+  ::view-transition-new(root) {
+    animation-name: x-fade-in;
+  }
+}
+@keyframes x-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes x-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
