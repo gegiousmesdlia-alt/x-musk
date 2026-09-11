@@ -53,10 +53,37 @@ function currencySymbol(c) {
   return { NGN: '₦', USD: '$', GBP: '£', EUR: '€', GHS: '₵', KES: 'KSh', ZAR: 'R', TZS: 'TSh', UGX: 'USh', RWF: 'RF' }[c] || c || '€';
 }
 
-/* ─── REQUIRE AUTH (no paywall — all features open to logged-in users) ─── */
+/* ─── REQUIRE AUTH ─── shows a sign-in/register popup instead of a hard
+   redirect, so a guest browsing a shared profile/post isn't yanked away —
+   they just get prompted the moment they try to DO something. ─────────── */
 function requireVerified(action) {
-  if (!currentUser) { showPage('login'); return false; }
-  return true;
+  if (currentUser) return true;
+  showAuthPrompt(action);
+  return false;
+}
+
+function showAuthPrompt(action) {
+  let modal = document.getElementById('authPromptModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'authPromptModal';
+    modal.className = 'modal-overlay';
+    modal.setAttribute('onclick', "if(event.target===this)this.classList.remove('open')");
+    modal.innerHTML = `
+      <div class="modal-card" style="max-width:360px;text-align:center;padding:32px 24px">
+        <div style="font-size:2rem;margin-bottom:12px">🔒</div>
+        <div id="authPromptText" style="font-weight:700;font-size:1.05rem;margin-bottom:8px">Sign in to continue</div>
+        <div style="color:var(--text-dim);font-size:0.9rem;margin-bottom:24px">You'll need an account for that.</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="btn btn-primary" onclick="document.getElementById('authPromptModal').classList.remove('open'); showPage('login')">Sign in</button>
+          <button class="btn btn-outline" onclick="document.getElementById('authPromptModal').classList.remove('open'); showPage('register')">Create account</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  const textEl = document.getElementById('authPromptText');
+  if (textEl) textEl.textContent = action ? `Sign in to ${action}` : 'Sign in to continue';
+  modal.classList.add('open');
 }
 
 /* ─── LOADER ─── */

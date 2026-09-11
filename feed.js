@@ -272,7 +272,7 @@ function togglePostType(type) {
 }
 
 async function toggleLike(postId, el) {
-  if (!currentUser) { showPage('login'); return; }
+  if (!requireVerified('like this post')) return;
   const uid = currentUser.uid, snap = await window.XF.get('posts/' + postId + '/likes/' + uid);
   const heartSVG = (filled) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
   function parseFormatted(txt) {
@@ -297,7 +297,7 @@ async function toggleLike(postId, el) {
 }
 
 async function rsvpEvent(postId) {
-  if (!currentUser) { showPage('login'); return; }
+  if (!requireVerified('RSVP to this event')) return;
   const uid = currentUser.uid, snap = await window.XF.get('posts/' + postId + '/rsvps/' + uid);
   if (snap.exists()) { await window.XF.remove('posts/' + postId + '/rsvps/' + uid); showToast('RSVP removed'); }
   else { await window.XF.set('posts/' + postId + '/rsvps/' + uid, { name: currentProfile?.displayName || 'Member', at: window.XF.ts() }); showToast('RSVP confirmed!'); }
@@ -310,7 +310,6 @@ function sharePost(postId) {
 
 async function openPost(postId, e) {
   if (e) e.stopPropagation();
-  if (!currentUser) { showPage('login'); return; }
   showPage('post-detail', { postId });
 }
 

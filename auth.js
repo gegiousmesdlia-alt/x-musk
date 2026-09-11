@@ -175,10 +175,20 @@ async function onAuthChange(user) {
       typeof updateSidebarVerifyBtn === 'function' && updateSidebarVerifyBtn();
       hideLoader();
 
-      // Pages that require auth — send to landing
-      const authRequired = ['feed','discover','notifications','messages','profile','user-profile','post-detail','admin'];
+      // Pages that require auth — send to landing. Profile/post pages are
+      // deliberately excluded: a shared link should be viewable by a guest;
+      // any actual ACTION on that page (follow, message, like, comment) is
+      // gated individually via requireVerified(), which shows a sign-in
+      // prompt instead of blocking the view itself.
+      const authRequired = ['feed','discover','notifications','messages','profile','admin'];
       if (authRequired.includes(page)) { showPage('landing'); }
-      // Otherwise stay (landing, login, register, reset)
+      else if (page === 'user-profile') {
+        const uid = new URLSearchParams(window.location.search).get('uid');
+        if (uid) renderUserProfile(uid);
+      } else if (page === 'post-detail') {
+        const postId = new URLSearchParams(window.location.search).get('postId');
+        if (postId) renderPostDetail(postId);
+      }
     }
   } catch (err) {
     // Without this, a Firestore error here (rules not published yet, API

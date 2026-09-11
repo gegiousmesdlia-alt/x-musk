@@ -182,7 +182,7 @@ async function renderUserProfile(uid) {
             ${currentUser && uid !== currentUser.uid ? connStatus === 'incoming'
               ? `<button class="btn btn-primary btn-sm" onclick="acceptConnectionFromProfile('${incomingReqId}','${uid}',this)">✓ Accept</button><button class="btn btn-outline btn-sm" onclick="declineConnection('${incomingReqId}').then(()=>renderUserProfile('${uid}'))">Decline</button>`
               : connectBtnHTML(uid, connStatus) : ''}
-            ${!currentUser ? `<button class="btn btn-primary btn-sm" onclick="showPage('register')">Connect</button>` : ''}
+            ${!currentUser ? `<button class="btn btn-primary btn-sm" onclick="requireVerified('connect with members')">Connect</button>` : ''}
             ${connStatus === 'connected'
               ? `<button class="btn btn-outline btn-sm" onclick="openDMWith('${uid}')">Message</button>`
               : currentUser && uid !== currentUser.uid
@@ -234,7 +234,7 @@ function switchUserProfileTab(tab, el) {
    - declineMsgRequest: deletes the request
 ══════════════════════════════════════════════ */
 function sendMessageRequest(toUid, toName) {
-  if (!currentUser) { showPage('register'); return; }
+  if (!requireVerified('message this member')) return;
   // Show a small inline modal prompting for a message
   const existing = document.getElementById('msgReqModal');
   if (existing) existing.remove();
