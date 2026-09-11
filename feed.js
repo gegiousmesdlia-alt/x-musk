@@ -156,6 +156,7 @@ function postHTML(post, author) {
       </div>
       <div class="post-text">${escapeHTML(post.text || '')}</div>
       ${mediaHTML}
+      ${post.linkPreview ? linkPreviewCardHTML(post.linkPreview) : ''}
       <div class="post-actions" onclick="event.stopPropagation()">
         <div class="post-action comment" onclick="openPost('${post.id}',event)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${commentCount > 0 ? ' ' + formatCount(commentCount) : ''}</div>
         <div class="post-action like${isLiked ? ' liked' : ''}" onclick="toggleLike('${post.id}',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>${likeCount > 0 ? ' ' + formatCount(likeCount) : ''}</div>
@@ -208,6 +209,14 @@ async function submitPost() {
     if (imageInput?.files[0]) { showToast('Uploading image…'); imageURL = (await window.XCloud.upload(imageInput.files[0], 'x_posts')).url; }
     const ts = _postDateMode === 'backdate' ? resolvePostTimestamp() : Date.now();
     const postData = { authorUid: currentUser.uid, text, imageURL, type: isEvent ? 'event' : 'post', createdAt: ts, commentCount: 0 };
+    if (!imageURL) {
+      const firstUrl = detectFirstUrl(text);
+      if (firstUrl) {
+        const cached = window._composerPreviews['postLinkPreview'];
+        const preview = (cached && cached.url === firstUrl) ? cached : await fetchLinkPreview(firstUrl);
+        if (preview) postData.linkPreview = preview;
+      }
+    }
     if (isEvent) {
       postData.eventTitle = $('eventTitle').value.trim(); postData.eventDate = $('eventDate').value;
       postData.eventTime = $('eventTime').value; postData.eventLocation = $('eventLocation').value.trim();
@@ -218,6 +227,7 @@ async function submitPost() {
     currentProfile.postsCount = (currentProfile.postsCount || 0) + 1;
     textarea.value = ''; if (imageInput) imageInput.value = '';
     $('postImagePreview').innerHTML = '';
+    removeComposerPreview('postLinkPreview');
     if (isEvent) togglePostType('post');
     setPostDateMode('now'); showToast('Posted!'); renderFeed();
   } catch (err) { showToast('Failed to post — ' + err.message); }

@@ -36,6 +36,7 @@ async function renderOwnProfile() {
       <div class="profile-name">${escapeHTML(currentProfile.displayName || 'Member')}${verifiedBadge(currentProfile.verified, true)}</div>
       <div class="profile-handle">@${escapeHTML(currentProfile.handle || 'member')}</div>
       ${currentProfile.bio ? `<div class="profile-bio">${escapeHTML(currentProfile.bio)}</div>` : '<div class="profile-bio text-dim">No bio yet</div>'}
+      <div id="ownBioLinkPreview"></div>
       <div class="profile-stats">
         <div class="profile-stat"><strong>${formatCount(currentProfile.followersCount || 0)}</strong> <span>Followers</span></div>
         <div class="profile-stat"><strong>${formatCount(currentProfile.followingCount || 0)}</strong> <span>Following</span></div>
@@ -58,6 +59,7 @@ async function renderOwnProfile() {
     </div>`;
   setTimeout(() => makeProfilePhotosClickable(container, currentProfile), 50);
   renderProfileViewers(currentUser.uid, container);
+  injectBioLinkPreview('ownBioLinkPreview', currentProfile.bio);
 }
 
 function switchOwnProfileTab(tab, el) {
@@ -200,6 +202,7 @@ async function renderUserProfile(uid) {
         <div class="profile-name">${escapeHTML(profile.displayName || 'Member')}${verifiedBadge(profile.verified, true)}</div>
         <div class="profile-handle">@${escapeHTML(profile.handle || 'member')}</div>
         ${profile.bio ? `<div class="profile-bio">${escapeHTML(profile.bio)}</div>` : ''}
+        <div id="userBioLinkPreview"></div>
         <div class="profile-stats">
           <div class="profile-stat"><strong>${followersHidden ? '⊘' : formatCount(profile.followersCount || 0)}</strong> <span>Followers</span></div>
           <div class="profile-stat"><strong>${formatCount(profile.followingCount || 0)}</strong> <span>Following</span></div>
@@ -216,6 +219,7 @@ async function renderUserProfile(uid) {
     recordProfileView(uid);
     setTimeout(() => makeProfilePhotosClickable(container, profile), 50);
     renderProfileViewers(uid, container);
+    injectBioLinkPreview('userBioLinkPreview', profile.bio);
   } catch (err) { container.innerHTML = '<div class="empty-state"><div class="empty-state-desc">Could not load profile</div></div>'; }
 }
 

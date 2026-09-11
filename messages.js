@@ -66,6 +66,7 @@ function _dmTeardown() {
     window.XF.db.ref('typing/' + cid + '/' + currentUser.uid).set(false).catch(()=>{});
   }
   _dmMsgCache.clear();
+  removeComposerPreview('dmLinkPreview');
   _dmPartner   = null;
   _dmReplyMsg  = null;
   _dmEmojiOpen = false;
@@ -141,7 +142,7 @@ function _dmWireComposer(uid) {
   if (input) {
     input.value = '';
     input.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); dmSendText(uid); } };
-    input.oninput   = () => { dmTyping(uid); dmUpdateSendBtn(); };
+    input.oninput   = () => { dmTyping(uid); dmUpdateSendBtn(); debouncedComposerPreview(input.value, 'dmLinkPreview'); };
   }
   const sendBtn = document.querySelector('#dmFullpage .dm-send-btn');
   if (sendBtn) sendBtn.onclick = () => dmSendText(uid);
@@ -265,6 +266,7 @@ function _buildMsgsHTML(msgs, uid, convId) {
     let content = '';
     if (m.imageUrl) content += `<img src="${escapeHTML(m.imageUrl)}" class="dm-img-bubble" onclick="openLightbox('${escapeHTML(m.imageUrl)}')" loading="lazy">`;
     if (m.text)     content += `<span class="dm-text">${escapeHTML(m.text)}</span>`;
+    if (m.linkPreview) content += linkPreviewCardHTML(m.linkPreview);
 
     // Meta
     const t      = m.createdAt > 0 ? new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
@@ -494,9 +496,21 @@ async function dmSendText(uid) {
   if (_dmReplyMsg) { msg.replyTo = { ..._dmReplyMsg }; cancelReply(); }
 
   try {
-    await window.XF.push('dms/' + cid, msg);
+    const firstUrl = detectFirstUrl(text);
+    const cached = window._composerPreviews['dmLinkPreview'];
+    if (firstUrl && cached && cached.url === firstUrl) msg.linkPreview = cached;
+    removeComposerPreview('dmLinkPreview');
+
+    const ref = await window.XF.push('dms/' + cid, msg);
     _dmNotifyRecipient(uid, text);
-  } catch(err) {
+    // If the preview hadn't finished fetching yet (e.g. sent right after
+    // pasting, before the debounce fired), patch it in once it's ready.
+    if (firstUrl && !msg.linkPreview && ref?.key) {
+      fetchLinkPreview(firstUrl).then(preview => {
+        if (preview) window.XF.update('dms/' + cid + '/' + ref.key, { linkPreview: preview }).catch(() => {});
+      });
+    }
+  } catch (err) {
     input.value = text;
     dmUpdateSendBtn();
     showToast('Failed to send');

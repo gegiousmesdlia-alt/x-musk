@@ -141,10 +141,23 @@ function toggleTheme() {
   ['themeToggleIcon', 'mobileThemeIcon'].forEach(id => { const el = $(id); if (el) el.textContent = isLight ? '🌙' : '☀'; });
 }
 function applyStoredTheme() {
-  const t = localStorage.getItem('xclub_theme');
-  if (t === 'light') {
+  const stored = localStorage.getItem('xclub_theme');
+  const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  const useLight = stored ? stored === 'light' : prefersLight;
+
+  if (useLight) {
     document.body.classList.add('theme-light');
     ['themeToggleIcon', 'mobileThemeIcon'].forEach(id => { const el = $(id); if (el) el.textContent = '🌙'; });
+  }
+
+  // If the person hasn't manually chosen a theme in this app, keep following
+  // their OS setting live (e.g. their device switches to dark mode at night).
+  if (!stored && window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+      if (localStorage.getItem('xclub_theme')) return; // they've since made an explicit choice — stop following
+      document.body.classList.toggle('theme-light', e.matches);
+      ['themeToggleIcon', 'mobileThemeIcon'].forEach(id => { const el = $(id); if (el) el.textContent = e.matches ? '🌙' : '☀'; });
+    });
   }
 }
 
@@ -155,6 +168,101 @@ function openLightbox(url) {
   lb.innerHTML = `<div class="photo-lightbox-close" onclick="this.parentElement.remove()">✕</div><img src="${escapeHTML(url)}" alt="Photo">`;
   lb.onclick = function (e) { if (e.target === lb) lb.remove(); };
   document.body.appendChild(lb);
+}
+
+/* ─── LINK PREVIEWS ── posts / DMs / bio ─────────────────────────────────
+   detectFirstUrl() finds the first http(s) URL in a block of text.
+   fetchLinkPreview() calls our own /api/link-preview endpoint (Open Graph
+   scraper) — cheap, no API key, cached server-side for an hour.
+   linkPreviewCardHTML() renders the result the same way everywhere. ────── */
+const URL_REGEX = /\bhttps?:\/\/[^\s<]+[^\s<.,:;!?'")\]]/i;
+
+function detectFirstUrl(text) {
+  if (!text) return null;
+  const m = text.match(URL_REGEX);
+  return m ? m[0] : null;
+}
+
+async function fetchLinkPreview(url) {
+  if (!url) return null;
+  try {
+    const res = await fetch('/api/link-preview?url=' + encodeURIComponent(url));
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || (!data.title && !data.image)) return null;
+    return data;
+  } catch (e) { return null; }
+}
+
+function linkPreviewCardHTML(preview, opts = {}) {
+  if (!preview || !preview.url) return '';
+  const img = preview.image
+    ? `<div class="link-preview-img" style="background-image:url('${escapeHTML(preview.image)}')"></div>`
+    : '';
+  const body = `
+      ${img}
+      <div class="link-preview-body">
+        <div class="link-preview-site">${escapeHTML(preview.siteName || '')}</div>
+        ${preview.title ? `<div class="link-preview-title">${escapeHTML(preview.title)}</div>` : ''}
+        ${preview.description ? `<div class="link-preview-desc">${escapeHTML(preview.description)}</div>` : ''}
+      </div>`;
+
+  if (opts.dismissible) {
+    return `<div class="link-preview-card composer-preview">
+      ${body}
+      <button type="button" class="link-preview-remove" onclick="removeComposerPreview('${opts.containerId}')" title="Remove preview">✕</button>
+    </div>`;
+  }
+  return `<a class="link-preview-card" href="${escapeHTML(preview.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${body}</a>`;
+}
+
+/* ─── Live composer preview ── shows a preview card while composing a
+   post/DM, before you submit, debounced so it doesn't fetch on every
+   keystroke. The same fetched preview is then reused at submit time
+   instead of fetching twice. ────────────────────────────────────────── */
+window._composerPreviews = window._composerPreviews || {};
+let _composerPreviewTimers = {};
+
+function debouncedComposerPreview(text, containerId) {
+  clearTimeout(_composerPreviewTimers[containerId]);
+  _composerPreviewTimers[containerId] = setTimeout(() => updateComposerPreview(text, containerId), 600);
+}
+
+async function updateComposerPreview(text, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const url = detectFirstUrl(text);
+
+  if (!url) { el.innerHTML = ''; delete window._composerPreviews[containerId]; return; }
+  if (window._composerPreviews[containerId]?.url === url) return; // unchanged, don't refetch
+
+  el.innerHTML = `<div class="link-preview-loading">Loading preview…</div>`;
+  const preview = await fetchLinkPreview(url);
+
+  // The text may have changed again while we were fetching — bail if so.
+  if (detectFirstUrl(text) !== url) return;
+
+  if (!preview) { el.innerHTML = ''; delete window._composerPreviews[containerId]; return; }
+  window._composerPreviews[containerId] = preview;
+  el.innerHTML = linkPreviewCardHTML(preview, { dismissible: true, containerId });
+}
+
+function removeComposerPreview(containerId) {
+  const el = document.getElementById(containerId);
+  if (el) el.innerHTML = '';
+  delete window._composerPreviews[containerId];
+}
+
+// Bio has no natural "creation" moment to cache a preview against (unlike a
+// post/message), so fetch it lazily right after the profile renders, and
+// drop it into the placeholder container left in the markup.
+async function injectBioLinkPreview(containerId, bio) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const url = detectFirstUrl(bio);
+  if (!url) return;
+  const preview = await fetchLinkPreview(url);
+  if (preview) el.innerHTML = linkPreviewCardHTML(preview);
 }
 
 /* ─── MODAL CLOSE ─── */
