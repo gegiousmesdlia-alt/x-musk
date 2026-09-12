@@ -139,9 +139,46 @@ async function loadAdminSettings() {
     const price    = cfg.membershipPrice    ?? 1999;
     const currency = cfg.membershipCurrency ?? 'EUR';
     const label    = cfg.membershipLabel    ?? '€1,999';
+    const verificationOn = cfg.verificationPaywallEnabled === true;
+    const investmentsOn  = cfg.businessInvestmentsEnabled  === true;
 
     container.innerHTML = `
       <div style="padding:4px 0 20px">
+
+        <div style="margin-bottom:24px;padding:16px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm)">
+          <div style="font-weight:700;font-size:0.93rem;margin-bottom:4px">💳 Monetization</div>
+          <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:14px">
+            Payment processing (Flutterwave) is only allowed on paid hosting plans — most free hosting
+            tiers (like Vercel Hobby) restrict free accounts to non-commercial use. Paid features are
+            <strong>off by default</strong> so the site runs safely on Hobby. Turn a feature on below only
+            if you've moved to a paid plan and want to accept real payments again.
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:14px">
+            <button class="btn btn-outline btn-sm" onclick="setAllPaidFeatures(false)">Turn OFF all paid features</button>
+            <button class="btn btn-outline btn-sm" onclick="setAllPaidFeatures(true)">Turn ON all paid features</button>
+          </div>
+
+          <div class="admin-setting-row">
+            <div class="admin-setting-label">
+              Verification paywall
+              <div class="admin-setting-sub">The "Get Verified" checkout (Flutterwave)</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="cfgVerificationToggle" ${verificationOn ? 'checked' : ''} onchange="savePaidFeatureToggle('verificationPaywallEnabled', this.checked)">
+              <div class="toggle-track"></div><div class="toggle-thumb"></div>
+            </label>
+          </div>
+          <div class="admin-setting-row" style="border-bottom:none">
+            <div class="admin-setting-label">
+              Business investments
+              <div class="admin-setting-sub">"Invest Now" checkout on business posts (Flutterwave)</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="cfgInvestmentsToggle" ${investmentsOn ? 'checked' : ''} onchange="savePaidFeatureToggle('businessInvestmentsEnabled', this.checked)">
+              <div class="toggle-track"></div><div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
 
         <div class="admin-setting-row">
           <div class="admin-setting-label">
@@ -202,6 +239,31 @@ async function loadAdminSettings() {
 
   } catch (e) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-desc">Could not load settings</div></div>';
+  }
+}
+
+async function savePaidFeatureToggle(key, value) {
+  try {
+    await window.XF.update('appConfig', { [key]: value });
+    window._appConfig[key] = value;
+    typeof applyPaidFeatureVisibility === 'function' && applyPaidFeatureVisibility();
+    showToast(value ? 'Feature turned on' : 'Feature turned off');
+  } catch (e) {
+    showToast('Failed to save — try again');
+  }
+}
+
+async function setAllPaidFeatures(enabled) {
+  try {
+    await window.XF.update('appConfig', { verificationPaywallEnabled: enabled, businessInvestmentsEnabled: enabled });
+    window._appConfig.verificationPaywallEnabled = enabled;
+    window._appConfig.businessInvestmentsEnabled = enabled;
+    typeof applyPaidFeatureVisibility === 'function' && applyPaidFeatureVisibility();
+    const v = $('cfgVerificationToggle'), i = $('cfgInvestmentsToggle');
+    if (v) v.checked = enabled; if (i) i.checked = enabled;
+    showToast(enabled ? 'All paid features turned on' : 'All paid features turned off — Hobby-plan safe');
+  } catch (e) {
+    showToast('Failed to save — try again');
   }
 }
 

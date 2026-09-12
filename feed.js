@@ -272,6 +272,7 @@ function previewPostImage(input) {
 function removePostImage() { $('postImageInput').value = ''; $('postImagePreview').innerHTML = ''; }
 
 function togglePostType(type) {
+  if (type === 'business' && !paidFeatureEnabled('businessInvestmentsEnabled')) { showToast('Business posts aren\'t available right now'); return; }
   const ef = $('eventFields'), bf = $('businessFields');
   const bp = $('postTypePost'), be = $('postTypeEvent'), bb = $('postTypeBusiness');
   [bp, be, bb].forEach(b => b?.classList.remove('active'));
@@ -310,7 +311,29 @@ async function rsvpEvent(postId) {
   if (!requireVerified('RSVP to this event')) return;
   const uid = currentUser.uid, snap = await window.XF.get('posts/' + postId + '/rsvps/' + uid);
   if (snap.exists()) { await window.XF.remove('posts/' + postId + '/rsvps/' + uid); showToast('RSVP removed'); }
-  else { await window.XF.set('posts/' + postId + '/rsvps/' + uid, { name: currentProfile?.displayName || 'Member', at: window.XF.ts() }); showToast('RSVP confirmed!'); }
+  else {
+    await window.XF.set('posts/' + postId + '/rsvps/' + uid, { name: currentProfile?.displayName || 'Member', at: window.XF.ts() });
+    showToast('RSVP confirmed!');
+    maybeScheduleEventReminder(postId);
+  }
+}
+
+async function maybeScheduleEventReminder(postId) {
+  if (typeof isPushEnabled !== 'function' || !isPushEnabled()) return; // not subscribed — nothing to do
+  try {
+    const snap = await window.XF.get('posts/' + postId);
+    const post = snap.val();
+    if (!post?.eventDate) return;
+    const eventMs = new Date(post.eventDate + 'T' + (post.eventTime || '09:00')).getTime();
+    const reminderMs = eventMs - 60 * 60 * 1000; // 1 hour before
+    if (isNaN(eventMs) || reminderMs <= Date.now()) return; // already past — nothing to schedule
+    await schedulePushNotification(
+      `Starting soon: ${post.eventTitle || 'Event'}`,
+      `${post.eventTitle || 'Your event'} starts in 1 hour${post.eventLocation ? ' at ' + post.eventLocation : ''}.`,
+      reminderMs,
+      '/post-detail.html?postId=' + postId
+    );
+  } catch (e) {}
 }
 
 function sharePost(postId) {

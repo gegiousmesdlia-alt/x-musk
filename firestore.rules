@@ -128,6 +128,28 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || (signedIn() && resource.data.authorUid == request.auth.uid);
     }
 
+    /* ── pushSubscriptions/{id} & scheduledPushes/{id} ── written by the
+       client (self-serve, like any other user data). The actual SENDING
+       happens server-side via the Firebase Admin SDK (api/check-scheduled-
+       pushes.js), which authenticates with a service account and bypasses
+       these rules entirely — so they stay locked to the owning user only,
+       nothing needs to be public here. ─────────────────────────────────── */
+    match /pushSubscriptions/{id} {
+      allow read, delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /scheduledPushes/{id} {
+      // subscriptionId isn't verifiable against auth.uid here without an
+      // extra read, so this is intentionally permissive on read for the
+      // owning session's own bookkeeping; the sensitive step (actually
+      // sending) never goes through these rules at all.
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if false; // only the server (Admin SDK) marks these sent
+    }
+
     /* ── settings/{appConfig|config} ── app-wide singletons.
        Publicly readable (membership price, groq key usage flags, etc.
        are read before/without a full profile in some flows); only the

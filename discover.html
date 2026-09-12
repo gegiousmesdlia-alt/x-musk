@@ -34,6 +34,7 @@
       <div class="nav-link" data-page="profile" onclick="showPage('profile')"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span>Profile</span></div>
     </div>
     <button class="nav-post-btn" onclick="openPostModal()"><span>Post</span></button>
+    <button class="nav-theme-btn" id="navPushBtn" onclick="togglePushFromNav()" title="Notifications"><span id="pushToggleIcon">🔕</span></button>
     <button class="nav-theme-btn" onclick="toggleTheme()" title="Toggle theme"><span id="themeToggleIcon">☀</span></button>
     <div class="nav-user" id="navUserWrap" style="display:none" onclick="showPage('profile')">
       <div class="avatar avatar-md" id="navUserAvatar"></div>
@@ -134,6 +135,7 @@
 <script src="messages.js"></script>
 <script src="business.js"></script>
 <script src="sidebar.js"></script>
+<script src="push.js"></script>
 <script src="boot.js"></script>
 </body>
 </html>

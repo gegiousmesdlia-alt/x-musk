@@ -55,7 +55,7 @@ function businessPostHTML(post, author) {
         <div class="invest-stats"><span>${pct}% funded</span><span>${post.investorCount || 0} investors</span></div>
         <div class="invest-raised">${currencySymbol(post.bizCurrency)}${Number(raised).toLocaleString()} raised</div>
         <div class="invest-actions" style="margin-top:12px">
-          ${!isOwner ? `<div class="invest-btn" onclick="openInvestModal('${post.id}')">◈ Invest Now</div>` : ''}
+          ${(!isOwner && paidFeatureEnabled('businessInvestmentsEnabled')) ? `<div class="invest-btn" onclick="openInvestModal('${post.id}')">◈ Invest Now</div>` : ''}
           ${isOwner ? `<button class="invest-manage-btn" onclick="openManageInvest('${post.id}')">⊞ Manage Investment</button>` : ''}
         </div>
       </div>
@@ -69,6 +69,7 @@ function businessPostHTML(post, author) {
 
 async function openInvestModal(postId) {
   if (!requireVerified('invest')) return;
+  if (!paidFeatureEnabled('businessInvestmentsEnabled')) { showToast('Investing isn\'t available right now'); return; }
   const snap = await window.XF.get('posts/' + postId); if (!snap.exists()) return;
   const post = snap.val(); const raised = post.bizRaised || 0, target = post.bizTarget || 1;
   const pct = Math.min(100, Math.round((raised / target) * 100));

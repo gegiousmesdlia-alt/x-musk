@@ -79,7 +79,7 @@ class FakeSnapshot {
    Anything not in this table (e.g. "typing/...") falls back to RTDB-only,
    unchanged, safety-net behaviour.
    ═══════════════════════════════════════════════════════════════════════ */
-const SIMPLE_ROOTS = new Set(['users', 'posts', 'handles', 'scheduledPosts', 'connectionRequests']);
+const SIMPLE_ROOTS = new Set(['users', 'posts', 'handles', 'scheduledPosts', 'connectionRequests', 'pushSubscriptions', 'scheduledPushes']);
 const FIXED_DOC_ROOTS = { appConfig: 'appConfig', config: 'config' }; // -> settings/{fixedDocId}
 const SUB_ROOTS = {
   comments:        { parentColl: 'posts', sub: 'comments' },

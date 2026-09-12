@@ -73,6 +73,8 @@ async function onAuthChange(user) {
   currentUser = user;
   const page = window.__PAGE__; // set by each HTML file before boot.js loads
 
+  loadAppConfig(); // fire-and-forget; paywall/invest UI checks it once it lands
+
   try {
     if (user) {
       if (user.email === ADMIN_EMAIL) {
@@ -237,6 +239,7 @@ async function sendReset() {
    PAYMENT / VERIFICATION
 ══════════════════════════════════════════════ */
 function showPaywall() {
+  if (!paidFeatureEnabled('verificationPaywallEnabled')) { showToast('Verification isn\'t available right now'); return; }
   const m = $('paywallModal'); if (m) m.classList.add('open');
 }
 function closePaywall() {

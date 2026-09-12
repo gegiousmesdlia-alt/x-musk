@@ -106,6 +106,20 @@
       ".write": "auth != null && auth.token.email === 'admin@gmail.com'"
     },
 
+    "pushSubscriptions": {
+      "$id": {
+        ".read": "auth != null && data.child('uid').val() === auth.uid",
+        ".write": "auth != null && (data.exists() ? data.child('uid').val() === auth.uid : newData.child('uid').val() === auth.uid)"
+      }
+    },
+
+    "scheduledPushes": {
+      "$id": {
+        ".read": "auth != null",
+        ".write": false
+      }
+    },
+
     "config": {
       ".read": "auth != null",
       ".write": "auth != null && auth.token.email === 'admin@gmail.com'"

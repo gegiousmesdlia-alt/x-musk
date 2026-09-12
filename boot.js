@@ -6,6 +6,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (typeof initLandingParticles === 'function') initLandingParticles();
   updateNavActive();
 
+  // Register the service worker (offline asset caching + push notification
+  // support). This was present as a file but never actually registered
+  // anywhere before now.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.error('[SW] registration failed:', err));
+  }
+
   // Activate landing page immediately if we're on it
   const landingPage = document.getElementById('page-landing');
   if (landingPage) landingPage.classList.add('active');

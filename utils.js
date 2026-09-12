@@ -161,6 +161,33 @@ function applyStoredTheme() {
   }
 }
 
+/* ─── PAID FEATURE FLAGS ── admin-controlled, so the whole site can run on
+   Vercel's free Hobby plan (which disallows any payment processing) by
+   switching these off. Defaults to true/true if never set, so existing
+   deployments keep working exactly as before until an admin changes this. */
+window._appConfig = window._appConfig || {};
+
+async function loadAppConfig() {
+  try {
+    const snap = await window.XF.get('appConfig');
+    window._appConfig = snap.exists() ? snap.val() : {};
+  } catch (e) { window._appConfig = {}; }
+  applyPaidFeatureVisibility();
+}
+
+// Elements that exist as static HTML (so they can't be conditionally
+// rendered server-side) get hidden/shown here once the config is known.
+function applyPaidFeatureVisibility() {
+  const bizBtn = document.getElementById('postTypeBusiness');
+  if (bizBtn) bizBtn.style.display = paidFeatureEnabled('businessInvestmentsEnabled') ? '' : 'none';
+}
+
+function paidFeatureEnabled(key) {
+  // Defaults to OFF now — a feature only runs once an admin explicitly
+  // switches it on in Settings. Keeps the site Hobby-plan-safe by default.
+  return window._appConfig?.[key] === true;
+}
+
 /* ─── LIGHTBOX ─── */
 function openLightbox(url) {
   if (!url) return;
