@@ -328,6 +328,7 @@ async function maybeScheduleEventReminder(postId) {
     const reminderMs = eventMs - 60 * 60 * 1000; // 1 hour before
     if (isNaN(eventMs) || reminderMs <= Date.now()) return; // already past — nothing to schedule
     await schedulePushNotification(
+      currentUser.uid,
       `Starting soon: ${post.eventTitle || 'Event'}`,
       `${post.eventTitle || 'Your event'} starts in 1 hour${post.eventLocation ? ' at ' + post.eventLocation : ''}.`,
       reminderMs,

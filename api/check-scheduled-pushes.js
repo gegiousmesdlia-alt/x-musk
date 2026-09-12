@@ -55,23 +55,29 @@ module.exports = async (req, res) => {
   for (const doc of dueSnap.docs) {
     const item = doc.data();
     try {
-      const subDoc = await db.collection('pushSubscriptions').doc(item.subscriptionId).get();
-      if (!subDoc.exists) { await doc.ref.update({ sent: true, error: 'subscription not found' }); continue; }
+      const subsSnap = await db.collection('pushSubscriptions').where('uid', '==', item.uid).get();
+      if (subsSnap.empty) { await doc.ref.update({ sent: true, error: 'no active subscriptions' }); continue; }
 
-      const { subscription } = subDoc.data();
-      await webpush.sendNotification(subscription, JSON.stringify({
-        title: item.title || 'X-Musk Financial Club',
-        body: item.body || '',
-        url: item.url || '/',
-      }));
-      await doc.ref.update({ sent: true, sentAt: now });
-      sentCount++;
-      results.push({ id: doc.id, status: 'sent' });
-    } catch (err) {
-      // 404/410 means the browser unsubscribed — clean up so we stop trying.
-      if (err.statusCode === 404 || err.statusCode === 410) {
-        await db.collection('pushSubscriptions').doc(item.subscriptionId).delete().catch(() => {});
+      let sentToAny = false;
+      for (const subDoc of subsSnap.docs) {
+        try {
+          await webpush.sendNotification(subDoc.data().subscription, JSON.stringify({
+            title: item.title || 'X-Musk Financial Club',
+            body: item.body || '',
+            url: item.url || '/',
+          }));
+          sentToAny = true;
+        } catch (err) {
+          // 404/410 means the browser unsubscribed — clean up so we stop trying.
+          if (err.statusCode === 404 || err.statusCode === 410) {
+            await subDoc.ref.delete().catch(() => {});
+          }
+        }
       }
+      await doc.ref.update({ sent: true, sentAt: now });
+      if (sentToAny) sentCount++;
+      results.push({ id: doc.id, status: sentToAny ? 'sent' : 'failed' });
+    } catch (err) {
       await doc.ref.update({ sent: true, error: String(err.message || err) }).catch(() => {});
       results.push({ id: doc.id, status: 'failed', error: String(err.message || err) });
     }

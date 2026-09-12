@@ -1,18 +1,28 @@
-/* push.js — X Club — Web Push subscribe + schedule
+/* push.js — X Club — Web Push subscribe + schedule + instant send
  *
  * How this fits together:
  *  - enablePushNotifications() registers the service worker, subscribes
  *    via the browser's Push API, and saves the subscription to Firestore
- *    (pushSubscriptions/{id}) using the app's normal client-side write —
- *    same as any other user data.
- *  - schedulePushNotification(...) just writes a plain record to
- *    scheduledPushes/{id}: { subscriptionId, title, body, sendAt, sent:false }.
- *    Nothing sends anything at this point — it's just a row sitting in
- *    Firestore, same as a scheduled post.
- *  - The actual SENDING happens entirely server-side, in
- *    api/check-scheduled-pushes.js, triggered once a minute by an external
- *    free cron service. This file never calls that endpoint directly —
- *    it doesn't need to, and doesn't have the credentials to.
+ *    (pushSubscriptions/{id}, tagged with the owner's uid) using the app's
+ *    normal client-side write — same as any other user data. A user can
+ *    have more than one subscription doc (e.g. desktop + phone).
+ *
+ *  - schedulePushNotification(targetUid, ...) is for FUTURE reminders
+ *    (e.g. "1 hour before this event"). It just writes a plain record to
+ *    scheduledPushes/{id}. Nothing sends anything at write time — it's
+ *    picked up later by api/check-scheduled-pushes.js, which an external
+ *    free cron service (cron-job.org) triggers once a minute. That ~60s
+ *    worst-case delay is fine for a reminder, but too slow for a chat
+ *    message notification.
+ *
+ *  - sendPushNow(targetUid, ...) is for things that should arrive
+ *    immediately — right now, a new DM. It calls api/send-push-now
+ *    directly at send-time, no polling delay. The endpoint verifies the
+ *    caller's Firebase ID token server-side before sending, so this can't
+ *    be used to spam arbitrary push content to someone else's phone.
+ *
+ *  Either way, the actual SENDING always happens server-side — this file
+ *  never touches the VAPID private key or service account, it can't.
  */
 
 'use strict';
@@ -81,14 +91,12 @@ async function disablePushNotifications() {
   showToast('Notifications turned off');
 }
 
-// title/body: strings. sendAtMs: epoch ms in the future. url: optional
-// in-app path to open when the notification is clicked.
-async function schedulePushNotification(title, body, sendAtMs, url) {
-  const subId = localStorage.getItem('xclub_push_sub_id');
-  if (!subId) return false; // not subscribed — nothing to schedule against
+// For FUTURE reminders. targetUid: whoever should receive it (often
+// currentUser.uid for a self-reminder). sendAtMs: epoch ms in the future.
+async function schedulePushNotification(targetUid, title, body, sendAtMs, url) {
   try {
     await window.XF.push('scheduledPushes', {
-      subscriptionId: subId,
+      uid: targetUid,
       title, body,
       sendAt: sendAtMs,
       url: url || '/feed.html',
@@ -99,6 +107,24 @@ async function schedulePushNotification(title, body, sendAtMs, url) {
   } catch (err) {
     console.error('[push] schedule failed:', err);
     return false;
+  }
+}
+
+// For things that should arrive right away — e.g. "you got a new message".
+// Fire-and-forget is fine here: never block or fail the action that
+// triggered it (sending a DM should never fail just because a push didn't
+// go through).
+async function sendPushNow(targetUid, title, body, url) {
+  if (!currentUser) return;
+  try {
+    const idToken = await currentUser.getIdToken();
+    fetch('/api/send-push-now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken, targetUid, title, body, url }),
+    }).catch(() => {}); // best-effort — a failed push should never surface to the user
+  } catch (err) {
+    console.error('[push] instant send failed:', err);
   }
 }
 

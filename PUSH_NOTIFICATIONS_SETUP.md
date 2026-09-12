@@ -34,20 +34,29 @@ Redeploy after adding the environment variables — Vercel only picks them up on
 3. Save it. That's it — cron-job.org will now hit that URL every minute, and your endpoint checks Firestore for anything due and sends it.
 
 ## How it works end-to-end
-1. A user clicks the 🔔 bell icon in the nav bar → `enablePushNotifications()` in `push.js` runs → browser asks for permission → subscribes → the subscription is saved to Firestore (`pushSubscriptions/{id}`).
-2. Something schedules a reminder — right now this happens automatically when someone RSVPs to an event (1 hour before start) via `maybeScheduleEventReminder()` in `feed.js`. This just writes a plain record to `scheduledPushes/{id}`.
-3. Once a minute, cron-job.org calls `/api/check-scheduled-pushes`. That function (using the Firebase Admin SDK + your service account) checks for anything due, sends it via `web-push`, and marks it sent.
-4. The browser's service worker (`sw.js`) receives the push and shows the notification — even if every tab is closed.
 
-## Adding your own "schedule a notification" moments
-Anywhere else in the app, just call:
+**Scheduled reminders** (e.g. RSVP → 1-hour-before reminder):
+1. A user clicks the 🔔 bell icon in the nav bar → `enablePushNotifications()` in `push.js` runs → browser asks for permission → subscribes → the subscription is saved to Firestore (`pushSubscriptions/{id}`, tagged with the owner's uid — a user can have more than one, e.g. desktop + phone).
+2. Something schedules a reminder — right now this happens automatically when someone RSVPs to an event (1 hour before start) via `maybeScheduleEventReminder()` in `feed.js`. This just writes a plain record to `scheduledPushes/{id}: { uid: targetUid, title, body, sendAt, sent:false }`.
+3. Once a minute, cron-job.org calls `/api/check-scheduled-pushes`. That function (using the Firebase Admin SDK + your service account) checks for anything due, looks up ALL of that target user's subscriptions, sends via `web-push` to each, and marks it sent.
+
+**Instant notifications** (e.g. new DM — no polling delay):
+1. When a DM is sent, `_dmNotifyRecipient()` in `messages.js` calls `sendPushNow(targetUid, ...)`.
+2. That calls `/api/send-push-now` directly, right away — no waiting for the next cron tick. The endpoint verifies the sender's Firebase ID token server-side before doing anything, so this can't be abused to spam push notifications to someone else's phone by forging a request.
+3. It looks up the target's subscriptions and sends immediately via `web-push`.
+
+Either path ends the same way: the browser's service worker (`sw.js`) receives the push and shows the notification — even if every tab is closed.
+
+## Adding your own notification moments
+For a FUTURE reminder (polled once a minute — fine for anything not time-critical to the second):
 ```js
-schedulePushNotification(title, body, sendAtMs, url);
+schedulePushNotification(targetUid, title, body, sendAtMs, url);
 ```
-- `sendAtMs` — a future timestamp in milliseconds (`Date.now() + ...`)
-- `url` — optional, the in-app path to open when the notification is tapped
-
-It silently does nothing if the current user hasn't enabled notifications, so it's always safe to call.
+For something that should arrive right away (like a DM):
+```js
+sendPushNow(targetUid, title, body, url);
+```
+Both silently do nothing if the target hasn't enabled notifications, so they're always safe to call.
 
 ## Notes / limits
 - Firestore Spark (free) plan limits: 50K reads / 20K writes per day. A once-a-minute check that finds nothing due is still 1 read — 1,440 reads/day just from the cron job, which is nowhere near the free limit.

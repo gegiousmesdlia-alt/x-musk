@@ -555,4 +555,16 @@ async function _dmNotifyRecipient(toUid, preview) {
       read: false
     });
   } catch(e) {}
+
+  // Real OS-level push, so the recipient knows even if the site/app isn't
+  // open at all. Fire-and-forget — a failed push should never block or
+  // surface an error for the message itself, which already sent fine.
+  if (typeof sendPushNow === 'function') {
+    sendPushNow(
+      toUid,
+      currentProfile?.displayName || 'New message',
+      (preview || '').slice(0, 100),
+      '/messages.html?uid=' + currentUser.uid
+    );
+  }
 }
