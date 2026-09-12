@@ -128,10 +128,13 @@ async function sendPushNow(targetUid, title, body, url) {
   }
 }
 
-/* ── Nav bell button ─────────────────────────────────────────────────── */
+/* ── Nav bell button (desktop top-bar + mobile floating button) ────────── */
 function updatePushNavIcon() {
+  const state = isPushEnabled() ? '🔔' : '🔕';
   const icon = document.getElementById('pushToggleIcon');
-  if (icon) icon.textContent = isPushEnabled() ? '🔔' : '🔕';
+  if (icon) icon.textContent = state;
+  const iconMobile = document.getElementById('pushToggleIconMobile');
+  if (iconMobile) iconMobile.textContent = state;
 }
 
 async function togglePushFromNav() {

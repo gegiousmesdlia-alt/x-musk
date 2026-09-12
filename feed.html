@@ -152,6 +152,7 @@
 <div class="modal-overlay" id="manageInvestModal" onclick="if(event.target===this)closeModal('manageInvestModal')">
   <div class="modal-card" style="max-width:420px"><div class="modal-header"><div class="modal-close" onclick="closeModal('manageInvestModal')">✕</div><h2>Manage Investment</h2></div><div class="modal-body" id="manageInvestBody"></div></div>
 </div>
+<button class="mobile-push-fab" id="navPushBtnMobile" onclick="togglePushFromNav()" title="Notifications" aria-label="Notifications"><span id="pushToggleIconMobile">🔕</span></button>
 <button class="mobile-theme-fab" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme"><span id="mobileThemeIcon">☀</span></button>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
