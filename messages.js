@@ -231,7 +231,7 @@ function _dmDoRender(uid, convId) {
   msgEl.innerHTML = _buildMsgsHTML(msgs, uid, convId);
   if (wasAtBottom) msgEl.scrollTop = msgEl.scrollHeight;
 
-  setTimeout(() => { if (activeConvUid === uid) _markRead(convId); }, 800);
+  setTimeout(() => { if (activeConvUid === uid) _markRead(convId); }, 300);
   setTimeout(() => { if (activeConvUid === uid) _markDelivered(convId); }, 100);
 }
 
@@ -503,6 +503,7 @@ async function dmSendText(uid) {
 
     const ref = await window.XF.push('dms/' + cid, msg);
     _dmNotifyRecipient(uid, text);
+    _markRead(cid); // don't rely solely on the delayed render-triggered mark-read — replying is proof enough on its own
     // If the preview hadn't finished fetching yet (e.g. sent right after
     // pasting, before the debounce fired), patch it in once it's ready.
     if (firstUrl && !msg.linkPreview && ref?.key) {
@@ -538,6 +539,7 @@ async function dmSendImage(inputEl, uid) {
     await window.XF.push('dms/' + cid, msg);
     inputEl.value = '';
     _dmNotifyRecipient(uid, '📷 Photo');
+    _markRead(cid);
   } catch(e) { showToast('Image upload failed'); }
 }
 

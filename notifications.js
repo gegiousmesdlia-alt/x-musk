@@ -230,6 +230,10 @@ function _rebuildNotifUI() {
 // No fetch needed — cache is already live.
 function renderNotifications() {
   _rebuildNotifUI();
+  // Viewing the page IS reading the notifications — don't make that require
+  // a separate manual "mark all as read" click every single time. Small
+  // delay so a notification isn't marked read before it's even painted.
+  setTimeout(() => { if (window.__PAGE__ === 'notifications') markAllNotifsRead(); }, 600);
 }
 
 /* ── Mark all read ──────────────────────────────────────────────────────── */
