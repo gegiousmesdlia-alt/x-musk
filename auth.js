@@ -255,7 +255,7 @@ function initiatePayment() {
     tx_ref: 'xclub-' + currentUser.uid + '-' + Date.now(),
     amount: price, currency,
     customer: { email: currentUser.email, name: currentProfile.displayName },
-    customizations: { title: 'X-Musk Financial Club', description: 'Verified Membership', logo: '' },
+    customizations: { title: 'Circlet', description: 'Verified Membership', logo: '' },
     callback: async function(data) {
       if (data.status === 'successful' || data.status === 'completed') {
         try {

@@ -1,0 +1,12 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4285F4"/>
+      <stop offset="100%" stop-color="#7BAAF7"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(60,60)">
+    <circle cx="-13" cy="0" r="22" fill="none" stroke="url(#ringGrad)" stroke-width="8"/>
+    <circle cx="13" cy="0" r="22" fill="none" stroke="#4285F4" stroke-width="8" opacity="0.55"/>
+  </g>
+</svg>

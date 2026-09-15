@@ -55,7 +55,7 @@ self.addEventListener('fetch', e => {
 /* ── Web Push ── displays a notification even if every tab is closed,
    because this service worker keeps running independently of the page. */
 self.addEventListener('push', (event) => {
-  let data = { title: 'X-Musk Financial Club', body: '' };
+  let data = { title: 'Circlet', body: '' };
   try { data = event.data.json(); } catch (e) {
     if (event.data) data.body = event.data.text();
   }

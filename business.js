@@ -10,7 +10,7 @@ function launchFlutterwave(post, amount) {
   FlutterwaveCheckout({
     public_key: FLW_PUBLIC_KEY, tx_ref: ref, amount, currency: c, payment_options: 'card,banktransfer,ussd',
     customer: { email: currentUser?.email || '', name: currentProfile?.displayName || 'Investor' },
-    customizations: { title: post.bizTitle || 'Investment', description: 'Investment via X-Musk Financial Club', logo: '' },
+    customizations: { title: post.bizTitle || 'Investment', description: 'Investment via Circlet', logo: '' },
     callback: async function (data) {
       if (data.status === 'successful' || data.status === 'completed') {
         try {

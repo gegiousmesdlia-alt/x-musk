@@ -1,7 +1,7 @@
 {
-  "name": "X-Musk Financial Club",
-  "short_name": "X-MFC",
-  "description": "The ultra-premium financial network for verified investors",
+  "name": "Circlet",
+  "short_name": "Circlet",
+  "description": "Connect, share, and stay close to the people who matter.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
