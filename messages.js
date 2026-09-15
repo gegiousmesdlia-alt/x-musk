@@ -564,7 +564,7 @@ async function _dmNotifyRecipient(toUid, preview) {
       toUid,
       currentProfile?.displayName || 'New message',
       (preview || '').slice(0, 100),
-      '/messages.html?uid=' + currentUser.uid
+      '/messages?uid=' + currentUser.uid
     );
   }
 }

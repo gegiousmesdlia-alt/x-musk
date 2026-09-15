@@ -71,9 +71,15 @@ function friendlyError(code) {
 ══════════════════════════════════════════════ */
 async function onAuthChange(user) {
   currentUser = user;
-  const page = window.__PAGE__; // set by each HTML file before boot.js loads
+  const loc = (typeof pageFromLocation === 'function' && pageFromLocation()) || null;
+  // admin.html is a separate, non-SPA document and sets window.__PAGE__
+  // inline before boot.js runs; the merged SPA shell doesn't, and is
+  // routed from the URL instead.
+  const page = window.__PAGE__ || (loc ? loc.name : 'landing');
+  const opts = loc ? loc.opts : {};
+  window.__PAGE__ = page;
 
-  loadAppConfig(); // fire-and-forget; paywall/invest UI checks it once it lands
+  loadAppConfig();
 
   try {
     if (user) {
@@ -88,12 +94,8 @@ async function onAuthChange(user) {
       }
       isAdmin = false;
 
-      // Session-local cache: once we've fetched a profile in this browser
-      // tab, later page navigations (this is a true multi-page app — every
-      // click is a fresh page load) use the cached copy immediately instead
-      // of waiting on a network round-trip, then quietly refresh in the
-      // background so real changes (from this device or another) still
-      // show up without the user having to feel a reload every time.
+      // Session-local cache: instant render on repeat views within this
+      // tab's session, then a quiet background refresh for real changes.
       const _profCacheKey = 'xf_profile_' + user.uid;
       let _cachedProfile = null;
       try {
@@ -111,13 +113,9 @@ async function onAuthChange(user) {
         }
       }
 
-      // If we're on an auth page (or any page missing the app-only scripts),
-      // redirect to the feed BEFORE running init code that depends on
-      // scripts (notifications.js, messages.js, etc.) those pages don't
-      // load — running them first was crashing the login/register/reset
-      // flow before it ever got a chance to redirect.
-      if (['landing','login','register','reset'].includes(page)) { showPage('feed'); return; }
-
+      // Global, one-time init — this used to re-run on every single page
+      // load because every navigation WAS a fresh page load. In the SPA
+      // model it only needs to happen once per session.
       updateNavUser(); typeof updateComposerAvatar === 'function' && updateComposerAvatar();
       typeof loadSuggested === 'function' && loadSuggested();
       typeof startNotifWatch === 'function' && startNotifWatch();
@@ -128,9 +126,6 @@ async function onAuthChange(user) {
 
       hideLoader();
 
-      // Always refresh from the network in the background — even on a
-      // cache hit — so edits made elsewhere (another tab, another device,
-      // an admin action) show up without needing a hard refresh.
       window.XF.get('users/' + user.uid).then(freshSnap => {
         const fresh = freshSnap.exists() ? freshSnap.val() : null;
         if (!fresh) return;
@@ -139,11 +134,11 @@ async function onAuthChange(user) {
         try { sessionStorage.setItem(_profCacheKey, JSON.stringify(fresh)); } catch (e) {}
         if (changed) {
           updateNavUser();
-          if (page === 'profile' && typeof renderOwnProfile === 'function') renderOwnProfile();
+          if (window.__PAGE__ === 'profile' && typeof renderOwnProfile === 'function') renderOwnProfile();
         }
       }).catch(err => console.error('[Auth] background profile refresh failed:', err));
 
-      // Check for pending session profile redirect
+      // Pending session profile redirect (e.g. just registered)
       if (!window._pendingProfileUid) {
         try { window._pendingProfileUid = sessionStorage.getItem('_pendingProfileUid') || null; } catch(e) {}
       }
@@ -156,19 +151,10 @@ async function onAuthChange(user) {
         return;
       }
 
-      // Page-specific initialisation
-      if (page === 'feed')          { renderFeed(); setTimeout(loadBizFeed, 1500); setTimeout(runScheduledPosts, 5000); }
-      if (page === 'discover')      renderDiscover();
-      if (page === 'notifications') renderNotifications();
-      if (page === 'messages')      renderConversations();
-      if (page === 'profile')       renderOwnProfile();
-      if (page === 'user-profile') {
-        const uid = new URLSearchParams(window.location.search).get('uid');
-        if (uid) renderUserProfile(uid); else showPage('feed');
-      }
-      if (page === 'post-detail') {
-        const postId = new URLSearchParams(window.location.search).get('postId');
-        if (postId) renderPostDetail(postId); else showPage('feed');
+      if (['landing','login','register','reset'].includes(page)) {
+        showPage('feed');
+      } else {
+        onPageActivated(page, opts);
       }
 
     } else {
@@ -182,14 +168,11 @@ async function onAuthChange(user) {
       // any actual ACTION on that page (follow, message, like, comment) is
       // gated individually via requireVerified(), which shows a sign-in
       // prompt instead of blocking the view itself.
-      const authRequired = ['feed','discover','notifications','messages','profile','admin'];
-      if (authRequired.includes(page)) { showPage('landing'); }
-      else if (page === 'user-profile') {
-        const uid = new URLSearchParams(window.location.search).get('uid');
-        if (uid) renderUserProfile(uid);
-      } else if (page === 'post-detail') {
-        const postId = new URLSearchParams(window.location.search).get('postId');
-        if (postId) renderPostDetail(postId);
+      const authRequired = ['feed','discover','reels','notifications','messages','profile','admin'];
+      if (authRequired.includes(page)) {
+        showPage('landing');
+      } else {
+        onPageActivated(page, opts);
       }
     }
   } catch (err) {
@@ -199,6 +182,35 @@ async function onAuthChange(user) {
     console.error('[Auth] onAuthChange failed:', err);
     hideLoader();
     if (typeof showToast === 'function') showToast('Could not load your account — please refresh');
+  }
+}
+
+// Called once at cold-boot (after the redirect checks above) AND every
+// time the router switches to a new page thereafter.
+function onPageActivated(page, opts = {}) {
+  if (currentUser) {
+    if (page === 'feed')          { renderFeed(); setTimeout(loadBizFeed, 1500); setTimeout(runScheduledPosts, 5000); }
+    if (page === 'discover')      renderDiscover();
+    if (page === 'notifications') renderNotifications();
+    if (page === 'messages')      renderConversations();
+    if (page === 'profile')       renderOwnProfile();
+    if (page === 'user-profile') {
+      const uid = opts.uid || new URLSearchParams(window.location.search).get('uid');
+      if (uid) renderUserProfile(uid); else showPage('feed');
+    }
+    if (page === 'post-detail') {
+      const postId = opts.postId || new URLSearchParams(window.location.search).get('postId');
+      if (postId) renderPostDetail(postId); else showPage('feed');
+    }
+    // 'reels' has no dynamic data yet — static placeholder page
+  } else {
+    if (page === 'user-profile') {
+      const uid = opts.uid || new URLSearchParams(window.location.search).get('uid');
+      if (uid) renderUserProfile(uid);
+    } else if (page === 'post-detail') {
+      const postId = opts.postId || new URLSearchParams(window.location.search).get('postId');
+      if (postId) renderPostDetail(postId);
+    }
   }
 }
 

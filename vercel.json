@@ -4,6 +4,10 @@
     {
       "source": "/u/:handle",
       "destination": "/api/profile?user=:handle"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [

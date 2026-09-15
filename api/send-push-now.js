@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
       try {
         await webpush.sendNotification(
           doc.data().subscription,
-          JSON.stringify({ title, body: body || '', url: url || '/messages.html' })
+          JSON.stringify({ title, body: body || '', url: url || '/messages' })
         );
         sentCount++;
       } catch (err) {

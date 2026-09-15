@@ -1,5 +1,5 @@
-/* sw.js — X Club v7 — bump cache version to force refresh */
-const CACHE = 'xclub-v7';
+/* sw.js — Circlet — bump cache version to force refresh */
+const CACHE = 'circlet-v1';
 const ASSETS = [
   './index.html',
   './style.css',
@@ -64,14 +64,14 @@ self.addEventListener('push', (event) => {
       body: data.body || '',
       icon: '/icon-192.png',
       badge: '/icon-192.png',
-      data: { url: data.url || '/feed.html' },
+      data: { url: data.url || '/feed' },
     })
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || '/feed.html';
+  const targetUrl = event.notification.data?.url || '/feed';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {

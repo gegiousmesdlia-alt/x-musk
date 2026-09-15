@@ -332,13 +332,13 @@ async function maybeScheduleEventReminder(postId) {
       `Starting soon: ${post.eventTitle || 'Event'}`,
       `${post.eventTitle || 'Your event'} starts in 1 hour${post.eventLocation ? ' at ' + post.eventLocation : ''}.`,
       reminderMs,
-      '/post-detail.html?postId=' + postId
+      '/post?postId=' + postId
     );
   } catch (e) {}
 }
 
 function sharePost(postId) {
-  const url = window.location.origin + '/post-detail.html?postId=' + encodeURIComponent(postId);
+  const url = window.location.origin + '/post?postId=' + encodeURIComponent(postId);
   if (navigator.clipboard) navigator.clipboard.writeText(url); showToast('Link copied!');
 }
 

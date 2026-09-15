@@ -99,7 +99,7 @@ async function schedulePushNotification(targetUid, title, body, sendAtMs, url) {
       uid: targetUid,
       title, body,
       sendAt: sendAtMs,
-      url: url || '/feed.html',
+      url: url || '/feed',
       sent: false,
       createdAt: Date.now(),
     });

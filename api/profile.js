@@ -172,7 +172,7 @@ module.exports = async (req, res) => {
   // that query param and just showing the plain landing/sign-in screen,
   // which meant every shared profile link dead-ended there instead of
   // showing the profile.
-  const profileAppURL = `${SITE_URL}/user-profile.html?uid=${encodeURIComponent(uid)}`;
+  const profileAppURL = `${SITE_URL}/profile-view?uid=${encodeURIComponent(uid)}`;
 
   // FIX: ogImage was defined but NEVER used in the OG meta tags (template used
   // bare photoURL directly, so users without a photo got no og:image at all).
